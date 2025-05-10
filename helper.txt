@@ -1,0 +1,5 @@
+wrench .\acc32\sum_n.s --isa acc32 -c .\acc32\sum_n.yaml
+
+wrench .\f32a\count_zero.s --isa f32a -c .\f32a\count_zero.yaml
+
+wrench .\risc-iv\reverse_string_pstr.s --isa risc-iv -c .\risc-iv\reverse_string_pstr.yaml
