@@ -3,11 +3,11 @@
 out_buf:        .byte  '________________________________'
     
     .data
-.org 0x1000
+.org 0x500
 
 length:		    .word  0x90
 input_addr:     .word  0x80
-output_addr:    .word  0x84               ; Output address where the result should be stored
+output_addr:    .word  0x84
 buf_addr:	    .word  0x38
 const_1:        .word  0x1
 mask:	        .word  0x5F5F5F00
@@ -18,80 +18,99 @@ terminator:     .word  0xA
 error_value:    .word  0xCCCCCCCC
  
     .text
-_start:
-    lui         a2, %hi(byte_mask)
-    addi        a2, a2, %lo(byte_mask)
-    lw          a2, 0(a2)    
-    lui         a3, %hi(output_addr)
-    addi        a3, a3, %lo(output_addr)
-    lw          a3, 0(a3)
-    mv	        t4, t1 
-    lui         t6, %hi(out_buf_addr)
-    addi        t6, t6, %lo(out_buf_addr)
-    lw          t6, 0(t6)
-    lui         t3, %hi(buf_addr)
-    addi        t3, t3, %lo(buf_addr)
-    lw          t3, 0(t3)
-    lui         a1, %hi(mask)
-    addi        a1, a1, %lo(mask)
-    lw          a1, 0(a1)
-    sw          t1, 0(t3)
-    lui         a0, %hi(const_1)
-    addi        a0, a0, %lo(const_1)
-    lw          a0, 0(a0)
-    sub         t4, t4, a0
-    lui         a4, %hi(terminator)
-    addi        a4, a4, %lo(terminator)
-    lw          a4, 0(a4)
-    lui         a5, %hi(out_buf_addr)
-    addi        a5, a5, %lo(out_buf_addr)
-    lw          a5, 0(a5)
-    addi        a6, zero, 32 
-loop:
-    lui         t1, %hi(input_addr)             ; int * input_addr_const = *input_addr;
-    addi        t1, t1, %lo(input_addr)
-    lw          t1, 0(t1)                       ; int output_addr = *outp
-    lw          t1, 0(t1)
-    beq         a4, t1, reverse
-    add	        t3, t3, a0
-    add         a5, a5, a0
-    beq         a5, a6, error
-    sw          t1, 0(t3)
-    sub         t4, t4, a0
-    j           loop
-reverse:
-    beqz        a5, corner_end
-    sw          a5, 0(t6) 
-    add         t6, t6, a0
-    mv          t5, a5
-    sub         t5, t5, a0
-reverse_loop:
-    beqz        t5, end
-    lw          t1, 0(t3)
-    and         t1, t1, a2
-    sw          t1, 0(t6)
-    sw          t1, 0(a3)
-    add         t6, t6, a0
-    sub         t3, t3, a0
-    sub         t5, t5, a0
-    j           reverse_loop
-end:
-    lw          t1, 0(t3)
-    and         t1, t1, a2
-    sw          t1, 0(a3)
-    add         t1, t1, a1
-    sw          t1, 0(t6)
-    halt
-corner_end:
-    sub         t3, t3, a0
-    lw          t1, 0(t3)
-    and         t1, t1, a2
-    add         t1, t1, a1
-    sw          t1, 0(t6)
-    halt
-error:
-    lui         t5, %hi(error_value)
-    addi        t5, t5, %lo(error_value)
-    lw          t5, 0(t5)
-    sw          t5, 0(a3)
-    halt
+_start:                                  ; Инициализация регистров
+    
+    lui     a2, %hi(byte_mask)           ; Загрузка верхних 20 бит адреса byte_mask
+    addi    a2, a2, %lo(byte_mask)       ; Добавление младших 12 бит адреса
+    lw      a2, 0(a2)                    ; Загрузка значения 0x000000FF (маска байта)
+    
+    lui     a3, %hi(output_addr)         ; Загрузка адреса output_addr
+    addi    a3, a3, %lo(output_addr)
+    lw      a3, 0(a3)                    ; Загрузка значения output_addr
+    
+    mv      t4, t1                       ; Копирование значения t1 в t4
+    
+    lui     t6, %hi(out_buf_addr)        ; Загрузка адреса out_buf_addr
+    addi    t6, t6, %lo(out_buf_addr)
+    lw      t6, 0(t6)                    ; Загрузка адреса выходного буфера (0x0000)
+    
+    lui     t3, %hi(buf_addr)            ; Загрузка адреса buf_addr
+    addi    t3, t3, %lo(buf_addr)
+    lw      t3, 0(t3)                    ; Загрузка адреса рабочего буфера (0x0038)
+    
+    lui     a1, %hi(mask)                ; Загрузка адреса mask
+    addi    a1, a1, %lo(mask)
+    lw      a1, 0(a1)                    ; Загрузка значения mask (0x5F5F5F00)
+    
+    sw      t1, 0(t3)                    ; Сохранение t1 в рабочий буфер
+    
+    lui     a0, %hi(const_1)             ; Загрузка адреса const_1
+    addi    a0, a0, %lo(const_1)
+    lw      a0, 0(a0)                    ; Загрузка значения 1
+    
+    sub     t4, t4, a0                   ; Вычитание 1 из t4
+    
+    lui     a4, %hi(terminator)          ; Загрузка адреса terminator
+    addi    a4, a4, %lo(terminator)
+    lw      a4, 0(a4)                    ; Загрузка значения '\n' (0x0A)
+    
+    lui     a5, %hi(out_buf_addr)        ; Загрузка адреса out_buf_addr
+    addi    a5, a5, %lo(out_buf_addr)
+    lw      a5, 0(a5)                    ; Инициализация a5 адресом out_buf
+    
+    addi    a6, zero, 32                 ; Установка максимальной длины 32 в a6
+
+loop:                                    ; Основной цикл чтения входной строки
+    lui     t1, %hi(input_addr)          ; Загрузка адреса input_addr
+    addi    t1, t1, %lo(input_addr)
+    lw      t1, 0(t1)                    ; Загрузка указателя на входную строку
+    lw      t1, 0(t1)                    ; Чтение текущего символа из строки
+    beq     a4, t1, reverse              ; Если символ == '\n', переход к reverse
+    
+    add     t3, t3, a0                   ; Увеличение указателя рабочего буфера
+    add     a5, a5, a0                   ; Увеличение счётчика длины (a5)
+    beq     a5, a6, error                ; Если длина == 32, переход к ошибке
+    sw      t1, 0(t3)                    ; Сохранение символа в рабочий буфер
+    sub     t4, t4, a0                   ; Вычитание 1 из t4
+    j       loop                         ; Повтор цикла
+
+reverse:                                 ; Реверс строки и формирование P-строки
+    beqz    a5, corner_end               ; Если длина строки (a5) = 0, перейти к corner_end 
+    sw      a5, 0(t6)                    ; Записать длину строки как первый байт в выходной буфер (Pascal-строка)
+    add     t6, t6, a0                   ; Сдвинуть указатель выходного буфера (t6) на 1 байт вперед (теперь указывает на место для 1-го символа)
+    mv      t5, a5                       ; Скопировать длину строки (a5) в счетчик (t5)
+    sub     t5, t5, a0                   ; Уменьшить счетчик на 1 (т.к. первый символ уже обработан)
+
+reverse_loop:                            ; Цикл реверса строки
+    beqz    t5, end                      ; Если счетчик = 0, перейти к завершению (end)
+    lw      t1, 0(t3)                    ; Загрузить символ из рабочего буфера (по адресу t3)
+    and     t1, t1, a2                   ; Оставить только младший байт (маска 0xFF), игнорируя старшие биты
+    sw      t1, 0(t6)                    ; Записать символ в выходной буфер
+    sw      t1, 0(a3)                    ; Дублирующая запись в output_addr
+    add     t6, t6, a0                   ; Сдвинуть указатель выходного буфера вперед
+    sub     t3, t3, a0                   ; Сдвинуть указатель рабочего буфера НАЗАД (реверс строки)
+    sub     t5, t5, a0                   ; Уменьшить счетчик на 1
+    j       reverse_loop                 ; Повторить цикл
+
+end:                                     ; Завершение обработки (последний символ)
+    lw      t1, 0(t3)                    ; Обработка последнего символа (когда счетчик t5 = 0)
+    and     t1, t1, a2                   ; Оставить только младший байт
+    sw      t1, 0(a3)                    ; Записать в output_addr
+    add     t1, t1, a1                   ; Добавить маску 0x5F5F5F00 (преобразование символа)
+    sw      t1, 0(t6)                    ; Записать в выходной буфер
+    halt                                 ; Завершить программу
+
+corner_end:                              ; Обработка пустой строки (длина = 0)
+    sub     t3, t3, a0                   ; Корректировка указателя буфера
+    lw      t1, 0(t3)                    
+    and     t1, t1, a2                   ; Оставить только младший байт
+    add     t1, t1, a1                   ; Добавить маску 0x5F5F5F00
+    sw      t1, 0(t6)                    ; Записать в выходной буфер
+    halt                                 ; Завершить программу
+
+error:                                   ; Обработка ошибки переполнения буфера
+    lui     t5, %hi(error_value)         ; Загрузить адрес error_value
+    addi    t5, t5, %lo(error_value)
+    lw      t5, 0(t5)                    ; Загрузить значение ошибки (0xCCCCCCCC)
+    sw      t5, 0(a3)                    ; Записать в output_addr
+    halt                                 ; Завершить программу
